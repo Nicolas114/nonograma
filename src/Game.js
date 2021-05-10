@@ -1,6 +1,7 @@
 import React from 'react';
 import PengineClient from './PengineClient';
 import Board from './Board';
+import Mode from './Mode';
 
 class Game extends React.Component {
 
@@ -10,6 +11,7 @@ class Game extends React.Component {
     super(props);
     this.state = {
       grid: null,
+      mode: '#',
       waiting: false
     };
     this.handleClick = this.handleClick.bind(this);
@@ -33,11 +35,11 @@ class Game extends React.Component {
     if (this.state.waiting) {
       return;
     }
+
     // Build Prolog query to make the move, which will look as follows:
     // put("#",[0,1],[], [],[["X",_,_,_,_],["X",_,"X",_,_],["X",_,_,_,_],["#","#","#",_,_],[_,_,"#","#","#"]], GrillaRes, FilaSat, ColSat)
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
-    const queryS = 'put("#", [' + i + ',' + j + ']' 
-    + ', [], [],' + squaresS + ', GrillaRes, FilaSat, ColSat)';
+    const queryS = 'put("' + this.state.mode + '", [' + i + ',' + j + ']' + ', [], [],' + squaresS + ', GrillaRes, FilaSat, ColSat)';
     this.setState({
       waiting: true
     });
@@ -69,6 +71,11 @@ class Game extends React.Component {
         <div className="gameInfo">
           {statusText}
         </div>
+        <Mode
+          onClick={(e) => this.setState({
+            mode: e.target.value
+          })}
+        />
       </div>
     );
   }

@@ -30,3 +30,14 @@ body {
 .gameInfo {
   margin-left: 20px;
 }
+
+#paintmode-container {
+  display: flex;
+}
+
+#paintmodeX, #paintmodeC {
+  padding: 20px;
+}
+
+
+

@@ -11,7 +11,7 @@ class Board extends React.Component {
                     gridTemplateRows: 'repeat(' + numOfRows + ', 40px)',
                     gridTemplateColumns: 'repeat(' + numOfCols + ', 40px)'
                  }}>
-                {this.props.grid.map((row, i) =>
+                {this.props.grid.map((row, i) => 
                     row.map((cell, j) =>
                         <Square
                             value={cell}
@@ -19,7 +19,7 @@ class Board extends React.Component {
                             key={i + j}
                         />
                     )
-                )}
+                    )}
             </div>
         );
     }
