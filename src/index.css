@@ -64,3 +64,19 @@ body {
 .gameInfo {
   margin-left: 20px;
 }
+
+.square {
+  cursor: pointer;
+}
+
+.mode__button {
+  padding: 1em;
+}
+
+.painted {
+  background-color: #000000;
+}
+
+.cruz {
+  background-color: tan;
+}

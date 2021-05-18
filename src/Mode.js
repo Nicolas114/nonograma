@@ -4,13 +4,14 @@ class Mode extends React.Component {
 
     
     render() {
-        return (
+      return (
+
       <div className="mode">
         <p>Mode: </p>
-        <button value="X" onClick={this.props.onClick}>
+        <button className="mode__button" style={{}} value="X" onClick={this.props.onClick}>
           X
         </button>
-        <button value="#" onClick={this.props.onClick}>
+        <button className="mode__button" style={{background: 'blue'}} value="#" onClick={this.props.onClick}>
           #
         </button>
       </div>

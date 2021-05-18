@@ -1,6 +1,6 @@
 {
-  "short_name": "Tic tac toe",
-  "name": "Tic tac toe Sample",
+  "short_name": "Nonogram",
+  "name": "Nonogram Sample",
   "icons": [
     {
       "src": "favicon.ico",
