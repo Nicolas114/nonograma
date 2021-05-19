@@ -5,10 +5,10 @@ class Square extends React.Component {
 
         var filled_class = "";
         if (this.props.value === '#'){
-            filled_class = " painted";
+            filled_class = " square-painted";
         }
         else if (this.props.value === 'X') {
-            filled_class = " cruz";
+            filled_class = " square-cruz";
         }
         
         return (

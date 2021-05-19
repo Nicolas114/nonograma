@@ -2,6 +2,7 @@ import React from "react";
 import PengineClient from "./PengineClient";
 import Board from "./Board";
 import Mode from "./Mode";
+import Level from "./Level";
 
 class Game extends React.Component {
   pengine;
@@ -12,7 +13,9 @@ class Game extends React.Component {
       grid: null,
       mode: "#",
       rowClues: null,
+      satisfiedRowClues: [],
       colClues: null,
+      satisfiedColClues: [],
       waiting: false,
     };
     this.handleClick = this.handleClick.bind(this);
@@ -21,9 +24,54 @@ class Game extends React.Component {
   }
 
   handlePengineCreate() {
-    const queryS = "init(PistasFilas, PistasColumnas, Grilla)";
+    var queryS = "init(PistasFilas, PistasColumnas, Grilla)";
     this.pengine.query(queryS, (success, response) => {
       if (success) {
+        this.setState({
+          grid: response["Grilla"],
+          rowClues: response["PistasFilas"],
+          colClues: response["PistasColumnas"],
+        });
+        this.checkeo_inicial()
+      }
+    });
+
+
+  }
+
+  checkeo_inicial(){
+
+    const rowClues = JSON.stringify(this.state.rowClues);
+    const colClues = JSON.stringify(this.state.colClues);
+    const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_");
+
+    const queryS = "checkeo_inicial(" + rowClues + ", " + colClues + ", " + squaresS + ", ResultadosFilas, ResultadosColumnas)";
+    this.pengine.query(queryS, (success, response) => {
+      if (success) {
+        this.setState({
+          satisfiedRowClues: response["ResultadosFilas"],
+        });
+      }
+    });
+  }
+
+  handleRowCluesStates() {
+    let rowStates = [];
+
+    //modificar luego porque debe acomodarse al checkeo inicial (es decir, si ya hay pistas satisfechas)
+    for (let i = 0; i < this.state.rowClues.length; i++) {
+      rowStates[i] = false;
+    }
+
+    this.setState({
+      satisfiedRowClues: rowStates,
+    });
+  }
+
+  loadLevel(number) {
+    this.pengine.next((success, response) => {
+      if (success) {
+        console.log(response);
         this.setState({
           grid: response["Grilla"],
           rowClues: response["PistasFilas"],
@@ -34,25 +82,6 @@ class Game extends React.Component {
   }
 
   handleClick(i, j) {
-    // convierte el arreglo de pistasfila y pistascolumna a la representacion correcta para prolog (ver console.log())
-    var rowClues = "[";
-    for (let i = 0; i < this.state.rowClues.length; i++) {
-      rowClues += "[" + this.state.rowClues[i] + "]";
-      if (i !== this.state.rowClues.length - 1) {
-        rowClues += ", ";
-      }
-    }
-    rowClues += "]";
-
-    var colClues = "[";
-    for (let i = 0; i < this.state.colClues.length; i++) {
-      colClues += "[" + this.state.colClues[i] + "]";
-      if (i !== this.state.colClues.length - 1) {
-        colClues += ", ";
-      }
-    }
-    colClues += "]";
-
     // No action on click if we are waiting.
     if (this.state.waiting) {
       return;
@@ -60,6 +89,8 @@ class Game extends React.Component {
 
     // Build Prolog query to make the move, which will look as follows:
     // put("#",[0,1],[], [],[["X",_,_,_,_],["X",_,"X",_,_],["X",_,_,_,_],["#","#","#",_,_],[_,_,"#","#","#"]], GrillaRes, FilaSat, ColSat)
+    const rowClues = JSON.stringify(this.state.rowClues);
+    const colClues = JSON.stringify(this.state.colClues);
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
     const queryS =
       'put("' +
@@ -75,23 +106,24 @@ class Game extends React.Component {
       ", " +
       squaresS +
       ", GrillaRes, FilaSat, ColSat)";
-    console.log(queryS);
+
     this.setState({
       waiting: true,
     });
+
     this.pengine.query(queryS, (success, response) => {
       if (success) {
         this.setState({
-          //falta agregar toda la parte de las PistasFilas, PistasColumnas, etc
           grid: response["GrillaRes"],
-
           waiting: false,
         });
 
         const rowSatisfied = response["FilaSat"];
         const colSatisfied = response["ColSat"];
-        const rowClueToPaint = document.getElementsByClassName("rowClues")[0].childNodes[i];
-        const colClueToPaint = document.getElementsByClassName("colClues")[0].childNodes[j+1];
+        const rowClueToPaint =
+          document.getElementsByClassName("rowClues")[0].childNodes[i];
+        const colClueToPaint =
+          document.getElementsByClassName("colClues")[0].childNodes[j + 1];
 
         //pinta la pista que se está cumpliendo
         if (rowSatisfied) {
@@ -99,11 +131,9 @@ class Game extends React.Component {
         } else {
           rowClueToPaint.style = "background: null";
         }
-        console.log(colClueToPaint);
         if (colSatisfied) {
           colClueToPaint.style = "background: gray";
-        }
-        else {
+        } else {
           colClueToPaint.style = "background: null";
         }
       } else {
@@ -118,7 +148,6 @@ class Game extends React.Component {
     if (this.state.grid === null) {
       return null;
     }
-    const statusText = "";
     return (
       <div className="game">
         <Board
@@ -127,8 +156,8 @@ class Game extends React.Component {
           colClues={this.state.colClues}
           onClick={(i, j) => this.handleClick(i, j)}
         />
-        <div className="gameInfo">{statusText}</div>
         <Mode onClick={(e) => this.handleModeClick(e)} />
+        <Level onClick={() => this.loadLevel(1)} />
       </div>
     );
   }

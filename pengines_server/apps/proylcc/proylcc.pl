@@ -59,6 +59,22 @@ satisfiedColClue(ColN, PistasColumnas, Grilla, Satisfied):-
 	transformListIntoClueFormat(Col, FormattedCol),
 	comparison(FormattedCol, Clues, Satisfied).
 
+checkeo_inicial(PistasFilas, PistasColumnas, Grilla, ResultadosFilas, ResultadosColumnas):-
+	checkeo_filas(PistasFilas, Grilla, ResultadosFilas), !.
+	%checkeo_columnas(PistasColumnas, Grilla, ResultadosColumnas).
+
+
+checkeo_filas([], [], []).
+
+checkeo_filas([PF|PFr], [FG|FGr], [Satisfied|Resultados]):- 
+	transformListIntoClueFormat(FG, FormattedFG),
+	comparison(FormattedFG, PF, Satisfied),
+	checkeo_filas(PFr, FGr, Resultados).
+
+%checkeo_columnas(PistasColumnas, Grilla, ResultadosColumnas).
+
+/* PREDICADOS AUXILIARES */
+
 getColumna(_, [], []).
 
 getColumna(N, [X|Xs], [Element|Rest]):-
@@ -73,7 +89,7 @@ find_element(J, N, [_|Xs], Result):-
 getEnesimoTarget(0, [Target|_], Target).
 getEnesimoTarget(N, [_|Gs], Target):- N > 0, Ns is N - 1, getEnesimoTarget(Ns, Gs, Target).
 
-/* FormattedList contiene la lista (primer parametro) en formato Pistas. Ej: [#, X, #, #] --> [1, 2] */
+/* FormattedList contiene la lista (primer parametro) en formato Pistas. Ej: [#, X, _, #, #] --> [1, 2] */
 transformListIntoClueFormat(List, FormattedList):- transformAux(0, List, FormattedList).
 
 transformAux(0, [], []).

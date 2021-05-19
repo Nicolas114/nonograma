@@ -73,10 +73,10 @@ body {
   padding: 1em;
 }
 
-.painted {
+.square-painted {
   background-color: #000000;
 }
 
-.cruz {
+.square-cruz {
   background-color: tan;
 }
