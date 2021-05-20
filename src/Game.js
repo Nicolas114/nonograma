@@ -16,6 +16,7 @@ class Game extends React.Component {
       satisfiedRowClues: [],
       colClues: null,
       satisfiedColClues: [],
+      win: 0,
       waiting: false,
     };
     this.handleClick = this.handleClick.bind(this);
@@ -24,7 +25,7 @@ class Game extends React.Component {
   }
 
   handlePengineCreate() {
-    var queryS = "init(PistasFilas, PistasColumnas, Grilla)";
+    const queryS = "init(PistasFilas, PistasColumnas, Grilla)";
     this.pengine.query(queryS, (success, response) => {
       if (success) {
         this.setState({
@@ -32,53 +33,56 @@ class Game extends React.Component {
           rowClues: response["PistasFilas"],
           colClues: response["PistasColumnas"],
         });
-        this.checkeo_inicial()
+        this.checkeo_inicial();
       }
     });
-
-
   }
 
-  checkeo_inicial(){
-
+  checkeo_inicial() {
     const rowClues = JSON.stringify(this.state.rowClues);
     const colClues = JSON.stringify(this.state.colClues);
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_");
 
-    const queryS = "checkeo_inicial(" + rowClues + ", " + colClues + ", " + squaresS + ", ResultadosFilas, ResultadosColumnas)";
+    const queryS =
+      "checkeo_inicial(" +
+      rowClues +
+      ", " +
+      colClues +
+      ", " +
+      squaresS +
+      ", ResultadosFilas, ResultadosColumnas)";
     this.pengine.query(queryS, (success, response) => {
       if (success) {
         this.setState({
           satisfiedRowClues: response["ResultadosFilas"],
+          satisfiedColClues: response["ResultadosColumnas"],
         });
       }
     });
   }
 
-  handleRowCluesStates() {
-    let rowStates = [];
-
-    //modificar luego porque debe acomodarse al checkeo inicial (es decir, si ya hay pistas satisfechas)
-    for (let i = 0; i < this.state.rowClues.length; i++) {
-      rowStates[i] = false;
-    }
-
-    this.setState({
-      satisfiedRowClues: rowStates,
-    });
-  }
-
   loadLevel(number) {
-    this.pengine.next((success, response) => {
+    /* const queryS = "init(PistasFilas, PistasColumnas, Grilla)";
+    this.pengine.query(queryS, (success, response) => {
       if (success) {
-        console.log(response);
         this.setState({
           grid: response["Grilla"],
           rowClues: response["PistasFilas"],
           colClues: response["PistasColumnas"],
         });
+        this.checkeo_inicial();
+        this.pengine.next((success, response) => {
+          if (success) {
+            console.log(response);
+            this.setState({
+              grid: response["Grilla"],
+              rowClues: response["PistasFilas"],
+              colClues: response["PistasColumnas"],
+            });
+          }
+        });
       }
-    });
+    }); */
   }
 
   handleClick(i, j) {
@@ -92,59 +96,83 @@ class Game extends React.Component {
     const rowClues = JSON.stringify(this.state.rowClues);
     const colClues = JSON.stringify(this.state.colClues);
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
+
+    if (!this.state.win) {
+      const queryS =
+        'put("' +
+        this.state.mode +
+        '", [' +
+        i +
+        "," +
+        j +
+        "], " +
+        rowClues +
+        ", " +
+        colClues +
+        ", " +
+        squaresS +
+        ", GrillaRes, FilaSat, ColSat)";
+
+      this.setState({
+        waiting: true,
+      });
+
+      this.pengine.query(queryS, (success, response) => {
+        if (success) {
+          this.setState({
+            grid: response["GrillaRes"],
+            waiting: false,
+          });
+
+          const rowSatisfied = response["FilaSat"];
+          const colSatisfied = response["ColSat"];
+
+          let currentRowChanges = this.state.satisfiedRowClues.slice();
+          currentRowChanges[i] = rowSatisfied;
+          let currentColChanges = this.state.satisfiedColClues.slice();
+          currentColChanges[j] = colSatisfied;
+
+          this.setState({
+            satisfiedRowClues: currentRowChanges,
+            satisfiedColClues: currentColChanges,
+          });
+
+          this.checkWin();
+        } else {
+          this.setState({
+            waiting: false,
+          });
+        }
+      });
+    }
+
+  }
+
+  checkWin() {
+    const resultadosFilas = JSON.stringify(this.state.satisfiedRowClues);
+    const resultadosColumnas = JSON.stringify(this.state.satisfiedColClues);
     const queryS =
-      'put("' +
-      this.state.mode +
-      '", [' +
-      i +
-      "," +
-      j +
-      "], " +
-      rowClues +
-      ", " +
-      colClues +
-      ", " +
-      squaresS +
-      ", GrillaRes, FilaSat, ColSat)";
+      "check_win(" + resultadosFilas + ", " + resultadosColumnas + ", Win)";
 
-    this.setState({
-      waiting: true,
-    });
-
-    this.pengine.query(queryS, (success, response) => {
-      if (success) {
-        this.setState({
-          grid: response["GrillaRes"],
-          waiting: false,
-        });
-
-        const rowSatisfied = response["FilaSat"];
-        const colSatisfied = response["ColSat"];
-        const rowClueToPaint =
-          document.getElementsByClassName("rowClues")[0].childNodes[i];
-        const colClueToPaint =
-          document.getElementsByClassName("colClues")[0].childNodes[j + 1];
-
-        //pinta la pista que se está cumpliendo
-        if (rowSatisfied) {
-          rowClueToPaint.style = "background: gray";
-        } else {
-          rowClueToPaint.style = "background: null";
+    if (!this.state.win) {
+      this.pengine.query(queryS, (success, response) => {
+        if (success) {
+          this.setState({
+            win: response["Win"],
+          });
         }
-        if (colSatisfied) {
-          colClueToPaint.style = "background: gray";
-        } else {
-          colClueToPaint.style = "background: null";
-        }
-      } else {
-        this.setState({
-          waiting: false,
-        });
-      }
-    });
+      });
+    }
+    else {
+      
+    }
   }
 
   render() {
+    if (this.state.win) {
+      const statusText = document.getElementById("statusText");
+      statusText.textContent = "WIN"
+    }
     if (this.state.grid === null) {
       return null;
     }
@@ -154,10 +182,13 @@ class Game extends React.Component {
           grid={this.state.grid}
           rowClues={this.state.rowClues}
           colClues={this.state.colClues}
+          rowStates={this.state.satisfiedRowClues}
+          colStates={this.state.satisfiedColClues}
           onClick={(i, j) => this.handleClick(i, j)}
         />
         <Mode onClick={(e) => this.handleModeClick(e)} />
         <Level onClick={() => this.loadLevel(1)} />
+        <div id="statusText">Keep playing</div>
       </div>
     );
   }

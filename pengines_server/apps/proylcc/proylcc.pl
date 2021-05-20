@@ -27,10 +27,7 @@ replace(X, XIndex, Y, [Xi|Xs], [Xi|XsY]):-
 put(Contenido, [RowN, ColN], PistasFilas, PistasColumnas, Grilla, NewGrilla, FilaSat, ColSat):-
 	% NewGrilla es el resultado de reemplazar la fila Row en la posición RowN de Grilla
 	% (RowN-ésima fila de Grilla), por una fila nueva NewRow.
-	% writeln(Row), writeln(RowN), writeln(NewRow), writeln(Grilla), writeln(NewGrilla),
 	replace(Row, RowN, NewRow, Grilla, NewGrilla),
-	/* writeln("---"),
-	writeln(Row), writeln(RowN), writeln(NewRow), writeln(Grilla), writeln(NewGrilla), */
 	
 	% NewRow es el resultado de reemplazar la celda Cell en la posición ColN de Row por _,
 	% siempre y cuando Cell coincida con Contenido (Cell se instancia en la llamada al replace/5).
@@ -38,11 +35,9 @@ put(Contenido, [RowN, ColN], PistasFilas, PistasColumnas, Grilla, NewGrilla, Fil
 	% NewRow es el resultado de reemplazar lo que se que haya (_Cell) en la posición ColN de Row por Conenido.	 
 	(
 		replace(Cell, ColN, _, Row, NewRow), 
-		%writeln(Cell), writeln(Contenido), writeln(ColN), writeln(Row), writeln("NewRow: "), writeln(NewRow),
 		Cell == Contenido
 	;
 		replace(_Cell, ColN, Contenido, Row, NewRow)
-		%writeln(_Cell), writeln(Contenido), writeln(ColN), writeln(Row), writeln("NewRow: "), writeln(NewRow)
 	),
 	satisfiedRowClue(RowN, PistasFilas, NewGrilla, FilaSat),
 	satisfiedColClue(ColN, PistasColumnas, NewGrilla, ColSat).
@@ -60,8 +55,10 @@ satisfiedColClue(ColN, PistasColumnas, Grilla, Satisfied):-
 	comparison(FormattedCol, Clues, Satisfied).
 
 checkeo_inicial(PistasFilas, PistasColumnas, Grilla, ResultadosFilas, ResultadosColumnas):-
-	checkeo_filas(PistasFilas, Grilla, ResultadosFilas), !.
-	%checkeo_columnas(PistasColumnas, Grilla, ResultadosColumnas).
+	checkeo_filas(PistasFilas, Grilla, ResultadosFilas),
+	length(PistasColumnas, Max),
+	checkeo_columnas(PistasColumnas, Grilla, 0, Max, ResultadosColumnas),
+	!.
 
 
 checkeo_filas([], [], []).
@@ -71,9 +68,34 @@ checkeo_filas([PF|PFr], [FG|FGr], [Satisfied|Resultados]):-
 	comparison(FormattedFG, PF, Satisfied),
 	checkeo_filas(PFr, FGr, Resultados).
 
-%checkeo_columnas(PistasColumnas, Grilla, ResultadosColumnas).
+checkeo_columnas([], [], _, _, []).
+checkeo_columnas([], [_Ge|_Ger], _, _, []).
+
+checkeo_columnas([PC|PCr], Grilla, Index, Max, [Satisfied|Resultados]):- 
+    Index < Max,
+	
+	getColumna(Index, Grilla, Columna),
+	transformListIntoClueFormat(Columna, FormattedCG),
+	comparison(FormattedCG, PC, Satisfied),
+	IndexS is Index + 1,
+	checkeo_columnas(PCr, Grilla, IndexS, Max, Resultados).
+
+check_win(ResultadosFilas, ResultadosColumnas, Win):- 
+	todosUnos(ResultadosFilas, TodosUnos1), 
+	todosUnos(ResultadosColumnas, TodosUnos2), 
+	iguales(TodosUnos1, TodosUnos2, Win).
 
 /* PREDICADOS AUXILIARES */
+
+todosUnos([1], 1).
+todosUnos([0|_], 0).
+
+todosUnos([1|Rest], TodosUnos):- todosUnos(Rest, TodosUnos).
+
+iguales(1, 1, 1).
+iguales(1, 0, 0).
+iguales(0, 1, 0).
+iguales(0, 0, 0).
 
 getColumna(_, [], []).
 
