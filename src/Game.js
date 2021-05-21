@@ -2,7 +2,6 @@ import React from "react";
 import PengineClient from "./PengineClient";
 import Board from "./Board";
 import Mode from "./Mode";
-import Level from "./Level";
 
 class Game extends React.Component {
   pengine;
@@ -59,30 +58,6 @@ class Game extends React.Component {
         });
       }
     });
-  }
-
-  loadLevel(number) {
-    /* const queryS = "init(PistasFilas, PistasColumnas, Grilla)";
-    this.pengine.query(queryS, (success, response) => {
-      if (success) {
-        this.setState({
-          grid: response["Grilla"],
-          rowClues: response["PistasFilas"],
-          colClues: response["PistasColumnas"],
-        });
-        this.checkeo_inicial();
-        this.pengine.next((success, response) => {
-          if (success) {
-            console.log(response);
-            this.setState({
-              grid: response["Grilla"],
-              rowClues: response["PistasFilas"],
-              colClues: response["PistasColumnas"],
-            });
-          }
-        });
-      }
-    }); */
   }
 
   handleClick(i, j) {
@@ -187,7 +162,6 @@ class Game extends React.Component {
           onClick={(i, j) => this.handleClick(i, j)}
         />
         <Mode onClick={(e) => this.handleModeClick(e)} />
-        <Level onClick={() => this.loadLevel(1)} />
         <div className="statusText" id="statusText">Keep playing</div>
       </div>
     );
