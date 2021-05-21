@@ -9,7 +9,7 @@ class Clue extends React.Component {
 
     if (painted) {
       styles = {
-        background: 'blue',
+        background: '#7CA5B8',
       }
     }
     else {

@@ -188,7 +188,7 @@ class Game extends React.Component {
         />
         <Mode onClick={(e) => this.handleModeClick(e)} />
         <Level onClick={() => this.loadLevel(1)} />
-        <div id="statusText">Keep playing</div>
+        <div className="statusText" id="statusText">Keep playing</div>
       </div>
     );
   }
@@ -200,12 +200,14 @@ class Game extends React.Component {
     this.setState({
       mode: e.target.value,
     });
-    if (clickedButton.value === "#") {
-      divmode.children[2].style = "background: blue";
-      divmode.children[1].style = "background: null";
-    } else {
-      divmode.children[2].style = "background: null";
-      divmode.children[1].style = "background: blue";
+    if (!this.state.win) {
+      if (clickedButton.value === "#") {
+        divmode.children[2].style = "border: 2px solid red; background: #020122"
+        divmode.children[1].style = "border: null; background: tan"
+      } else {
+        divmode.children[2].style = "border: null; background: #020122"
+        divmode.children[1].style = "border: 2px solid red; background: tan"
+      }
     }
   }
 }
