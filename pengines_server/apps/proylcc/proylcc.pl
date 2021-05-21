@@ -22,19 +22,10 @@
 		En caso de que la lista de elementos original estuviese correspondida a una pista de la forma [2, 1], gracias a este formateo, podemos
 		fácilmente comparar ambas listas y concluir que efectivamente la lista original de elementos está satisfaciendo dicha pista.
 */
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMPORTANTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREDICADOS PRINCIPALES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-/*
- replace(?X, +XIndex, +Y, +Xs, -XsY)
- XsY es el resultado de reemplazar la ocurrencia de X en la posición XIndex de Xs por Y.
-*/
-replace(X, 0, Y, [X|Xs], [Y|Xs]).
-
-replace(X, XIndex, Y, [Xi|Xs], [Xi|XsY]):-
-    XIndex > 0,
-    XIndexS is XIndex - 1,
-    replace(X, XIndexS, Y, Xs, XsY).
 
 /*
 put(+Contenido, +Pos, +PistasFilas, +PistasColumnas, +Grilla, -GrillaRes, -FilaSat, -ColSat).
@@ -115,6 +106,56 @@ checkeo_inicial(PistasFilas, PistasColumnas, Grilla, ResultadosFilas, Resultados
 	checkeo_columnas(PistasColumnas, Grilla, 0, Max, ResultadosColumnas),
 	!.
 
+/* 
+transformListIntoClueFormat(+List, -FormattedList)
+Realiza la conversión tal que FormattedList contiene a la lista List en formato Pistas (ver aclaración del inicio). Ej: [#, X, _, #, #] --> [1, 2]
+*/
+transformListIntoClueFormat(List, FormattedList):- transformAux(0, List, FormattedList). %llamamos a un predicado auxiliar con un contador en cero como primer parametro
+
+/* 
+check_win(+ResultadosFilas, +ResultadosColumnas, -Win)
+Devuelve 1 o 0 dependiendo de si sus dos listas de entrada están formadas por unos solamente.
+@param ResultadosFilas - (List) Lista de unos y ceros que indica cuáles filas de la grilla satisfacen las pistas correspondiente a su posición
+@param ResultadosColumnas - (List) Ídem, pero con las columnas
+@param Win - (integer) Indica si todas las pistas fueron satisfechas o no. En otros términos, indica si el jugador ganó la partida.
+ */
+check_win(ResultadosFilas, ResultadosColumnas, Win):- 
+	todosUnos(ResultadosFilas, TodosUnos1), 
+	todosUnos(ResultadosColumnas, TodosUnos2), 
+	iguales(TodosUnos1, TodosUnos2, Win).
+
+
+/* 
+(*) Recordemos que la grilla tiene el siguiente formato:
+[["#", "#" , "#" , _ , _ ], --> fila 1
+ ["#", "#" ,"#", _ , _ ], --> fila 2 ...
+ ["#", "#" , _ , _ , _ ],
+ ["#","#","#", _ , _ ],
+ ["X" , _ ,"#","#","#"]]
+   |	|
+ col1 col2 ...
+
+Como se ve, es fácil obtener una fila de la grilla y operar con ella; no así para las columnas.
+Esto provoca que para operar con columnas, se deba tener en cuenta situaciones que al trabajar con filas, no eran posibles.
+La forma en la que se obtiene una columna de la grilla quedará explicada en el predicado getColumna/3
+*/
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREDICADOS AUXILIARES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+/*
+ replace(?X, +XIndex, +Y, +Xs, -XsY)
+ XsY es el resultado de reemplazar la ocurrencia de X en la posición XIndex de Xs por Y.
+*/
+replace(X, 0, Y, [X|Xs], [Y|Xs]).
+
+replace(X, XIndex, Y, [Xi|Xs], [Xi|XsY]):-
+    XIndex > 0,
+    XIndexS is XIndex - 1,
+    replace(X, XIndexS, Y, Xs, XsY).
+
 
 /* 
 checkeo_filas(+PistasFilas, +Grilla, -ResultadosFilas)
@@ -171,36 +212,6 @@ checkeo_columnas([PC|PCr], Grilla, Index, Max, [Satisfied|Resultados]):-
 
 
 /* 
-check_win(+ResultadosFilas, +ResultadosColumnas, -Win)
-Devuelve 1 o 0 dependiendo de si sus dos listas de entrada están formadas por unos solamente.
-@param ResultadosFilas - (List) Lista de unos y ceros que indica cuáles filas de la grilla satisfacen las pistas correspondiente a su posición
-@param ResultadosColumnas - (List) Ídem, pero con las columnas
-@param Win - (integer) Indica si todas las pistas fueron satisfechas o no. En otros términos, indica si el jugador ganó la partida.
- */
-check_win(ResultadosFilas, ResultadosColumnas, Win):- 
-	todosUnos(ResultadosFilas, TodosUnos1), 
-	todosUnos(ResultadosColumnas, TodosUnos2), 
-	iguales(TodosUnos1, TodosUnos2, Win).
-
-/* 
-(*) Recordemos que la grilla tiene el siguiente formato:
-[["#", "#" , "#" , _ , _ ], --> fila 1
- ["#", "#" ,"#", _ , _ ], --> fila 2 ...
- ["#", "#" , _ , _ , _ ],
- ["#","#","#", _ , _ ],
- ["X" , _ ,"#","#","#"]]
-   |	|
- col1 col2 ...
-
-Como se ve, es fácil obtener una fila de la grilla y operar con ella; no así para las columnas.
-Esto provoca que para operar con columnas, se deba tener en cuenta situaciones que al trabajar con filas, no eran posibles.
-La forma en la que se obtiene una columna de la grilla quedará explicada en el predicado getColumna/3
-*/
-
-/* PREDICADOS AUXILIARES */
-
-
-/* 
 todosUnos(+Lista, -TodosUnos)
 Guarda en TodosUnos el resultado de haber comprobado que efectivamente la lista está formada únicamente por unos. 
 */
@@ -226,7 +237,7 @@ iguales(0, 1, 0).
 iguales(0, 0, 0).
 
 /* 
-getColumna(Index, Grilla, Columna)
+getColumna(+Index, +Grilla, -Columna)
 Obtiene la columna en la posición Index de Grilla y la guarda en Columna
 */
  
@@ -273,13 +284,6 @@ getEnesimoTarget(N, [_|Gs], Target):-
 	N > 0,
 	Ns is N - 1, 
 	getEnesimoTarget(Ns, Gs, Target).
-
-
-/* 
-transformListIntoClueFormat(+List, -FormattedList)
-Realiza la conversión tal que FormattedList contiene a la lista List en formato Pistas (ver aclaración del inicio). Ej: [#, X, _, #, #] --> [1, 2]
-*/
-transformListIntoClueFormat(List, FormattedList):- transformAux(0, List, FormattedList). %llamamos a un predicado auxiliar con un contador en cero como primer parametro
 
 /* 
 transformAux(+Count, +List, -FormattedList)

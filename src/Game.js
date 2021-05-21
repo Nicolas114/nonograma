@@ -3,6 +3,10 @@ import PengineClient from "./PengineClient";
 import Board from "./Board";
 import Mode from "./Mode";
 
+/**
+ * Componente Game - componente principal de la aplicación. Se encarga de realizar las consultas al servidor Prolog, de renderizar el nonograma en su conjunto
+ * y de permitirle al usuario una interacción con el juego.
+ */
 class Game extends React.Component {
   pengine;
 
@@ -23,6 +27,11 @@ class Game extends React.Component {
     this.pengine = new PengineClient(this.handlePengineCreate);
   }
 
+  /**
+   * Inicializa la grilla del juego mediante la consulta init/3 al servidor Prolog.
+   * Establece el estado del componente de acuerdo a los resultados obtenidos, y realiza un chequeo inicial para verificar si algunas pistas
+   * de la grilla ya están satisfechas.
+   */
   handlePengineCreate() {
     const queryS = "init(PistasFilas, PistasColumnas, Grilla)";
     this.pengine.query(queryS, (success, response) => {
@@ -37,7 +46,16 @@ class Game extends React.Component {
     });
   }
 
+  /**
+   * Realiza un chequeo inicial enviando la consulta correspondiente al servidor Prolog. Los resultados se almacenan en el state en forma de listas con
+   * valores binarios, indicando qué pistas se están satisfaciendo o no.
+   */
   checkeo_inicial() {
+
+    if (this.state.waiting) {
+      return; 
+    }
+
     const rowClues = JSON.stringify(this.state.rowClues);
     const colClues = JSON.stringify(this.state.colClues);
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_");
@@ -50,16 +68,27 @@ class Game extends React.Component {
       ", " +
       squaresS +
       ", ResultadosFilas, ResultadosColumnas)";
-    this.pengine.query(queryS, (success, response) => {
+
+      this.setState({
+        waiting: true,
+      });
+
+      this.pengine.query(queryS, (success, response) => {
       if (success) {
         this.setState({
           satisfiedRowClues: response["ResultadosFilas"],
           satisfiedColClues: response["ResultadosColumnas"],
+          waiting: false,
         });
       }
     });
   }
 
+  /**
+   * Función estándar utilizada para cuando se realiza un click en una celda de la grilla.
+   * @param {*} i Índice de fila de la grilla
+   * @param {*} j Índice de columna de la grilla
+   */
   handleClick(i, j) {
     // No action on click if we are waiting.
     if (this.state.waiting) {
@@ -92,6 +121,7 @@ class Game extends React.Component {
         waiting: true,
       });
 
+      //realiza la consulta de put/7 al servidor Prolog 
       this.pengine.query(queryS, (success, response) => {
         if (success) {
           this.setState({
@@ -99,8 +129,9 @@ class Game extends React.Component {
             waiting: false,
           });
 
-          const rowSatisfied = response["FilaSat"];
-          const colSatisfied = response["ColSat"];
+          
+          const rowSatisfied = response["FilaSat"]; //almacena el valor de verdad referente a si la fila donde se hizo click satisface su correspondiente pista
+          const colSatisfied = response["ColSat"]; //almacena el valor de verdad referente a si la columna donde se hizo click satisface su correspondiente pista
 
           let currentRowChanges = this.state.satisfiedRowClues.slice();
           currentRowChanges[i] = rowSatisfied;
