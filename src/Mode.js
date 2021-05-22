@@ -1,12 +1,12 @@
 import React from "react";
 
+/**
+ * Componente Mode - se encarga de renderizar la parte de los modos de pintado de la aplicación.
+ */
 class Mode extends React.Component {
 
-    
     render() {
-
       return (
-
       <div className="mode">
         <p>Mode: </p>
         <button className="mode__button--skip" style={{background: 'tan'}} value="X" onClick={this.props.onClick}>

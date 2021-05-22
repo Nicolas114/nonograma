@@ -2,6 +2,9 @@ import React from "react";
 import Square from "./Square";
 import Clue from "./Clue";
 
+/**
+ * Componente Board - se encarga del renderizado del tablero del juego
+ */
 class Board extends React.Component {
   render() {
     const numOfRows = this.props.grid.length;

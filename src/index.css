@@ -47,7 +47,7 @@ body {
   gap: 0px 0px;
 }
 
-.contact>p {
+.footer>p {
   text-align: center;
   
 }
@@ -169,7 +169,7 @@ body {
   padding: 24px;
 }
 
-.contact {
+.footer {
   background-color: #C6EBBE;
   padding: 1em;
 }

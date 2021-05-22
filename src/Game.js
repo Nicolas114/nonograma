@@ -13,14 +13,14 @@ class Game extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      grid: null,
-      mode: "#",
-      rowClues: null,
-      satisfiedRowClues: [],
-      colClues: null,
-      satisfiedColClues: [],
-      win: 0,
-      waiting: false,
+      grid: null, //la grilla
+      mode: "#", //el modo de pintado -- "#" significa rellenar, "X" es pintar con una cruz.
+      rowClues: null, //estructura de pistas de las filas de la grilla
+      satisfiedRowClues: [], //estructura de las pistas de las filas de la grilla que están satisfechas
+      colClues: null, //estructura de pistas de las columnas de la grilla
+      satisfiedColClues: [], //estructura de las pistas de las columnas de la grilla que están satisfechas
+      win: 0, //el estado actual del juego en cuanto a si la partida está finalizada o no
+      waiting: false, //true si se está esperando por una respuesta del servidor, false en caso contrario
     };
     this.handleClick = this.handleClick.bind(this);
     this.handlePengineCreate = this.handlePengineCreate.bind(this);
@@ -61,13 +61,7 @@ class Game extends React.Component {
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_");
 
     const queryS =
-      "checkeo_inicial(" +
-      rowClues +
-      ", " +
-      colClues +
-      ", " +
-      squaresS +
-      ", ResultadosFilas, ResultadosColumnas)";
+      "checkeo_inicial(" + rowClues + ", " + colClues + ", " + squaresS + ", ResultadosFilas, ResultadosColumnas)";
 
       this.setState({
         waiting: true,
@@ -102,20 +96,7 @@ class Game extends React.Component {
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
 
     if (!this.state.win) {
-      const queryS =
-        'put("' +
-        this.state.mode +
-        '", [' +
-        i +
-        "," +
-        j +
-        "], " +
-        rowClues +
-        ", " +
-        colClues +
-        ", " +
-        squaresS +
-        ", GrillaRes, FilaSat, ColSat)";
+      const queryS = 'put("' + this.state.mode + '", [' + i + "," + j + "], " + rowClues + ", " + colClues + ", " + squaresS + ", GrillaRes, FilaSat, ColSat)";
 
       this.setState({
         waiting: true,
@@ -133,6 +114,7 @@ class Game extends React.Component {
           const rowSatisfied = response["FilaSat"]; //almacena el valor de verdad referente a si la fila donde se hizo click satisface su correspondiente pista
           const colSatisfied = response["ColSat"]; //almacena el valor de verdad referente a si la columna donde se hizo click satisface su correspondiente pista
 
+          //copia ambos arreglos para poder realizar el cambio en el state sin mutarlo
           let currentRowChanges = this.state.satisfiedRowClues.slice();
           currentRowChanges[i] = rowSatisfied;
           let currentColChanges = this.state.satisfiedColClues.slice();
@@ -143,6 +125,7 @@ class Game extends React.Component {
             satisfiedColClues: currentColChanges,
           });
 
+          //finalmente verifica si todas las pistas del juego fueron satisfechas después del click
           this.checkWin();
         } else {
           this.setState({
@@ -154,17 +137,25 @@ class Game extends React.Component {
 
   }
 
+  /**
+   * Verifica si todas las pistas del juego están satisfechas, ya que de ser así, la partida estaría terminada.
+   * Almacena el valor de verdad de esta verificación en el state.
+   */
   checkWin() {
     const resultadosFilas = JSON.stringify(this.state.satisfiedRowClues);
     const resultadosColumnas = JSON.stringify(this.state.satisfiedColClues);
-    const queryS =
-      "check_win(" + resultadosFilas + ", " + resultadosColumnas + ", Win)";
+    const queryS ="check_win(" + resultadosFilas + ", " + resultadosColumnas + ", Win)";
+
+    this.setState({
+      waiting: true,
+    })
 
     if (!this.state.win) {
       this.pengine.query(queryS, (success, response) => {
         if (success) {
           this.setState({
             win: response["Win"],
+            waiting: false,
           });
         }
       });
@@ -174,10 +165,14 @@ class Game extends React.Component {
     }
   }
 
+  /**
+   * Renderiza los componentes de la aplicación para que el usuario pueda interactuar con ella
+   * @returns el bloque de elementos HTML que conforman la aplicacion
+   */
   render() {
     if (this.state.win) {
       const statusText = document.getElementById("statusText");
-      statusText.textContent = "WIN"
+      statusText.textContent = "The game is finished"
     }
     if (this.state.grid === null) {
       return null;
@@ -188,7 +183,7 @@ class Game extends React.Component {
           grid={this.state.grid}
           rowClues={this.state.rowClues}
           colClues={this.state.colClues}
-          rowStates={this.state.satisfiedRowClues}
+          rowStates={this.state.satisfiedRowClues} 
           colStates={this.state.satisfiedColClues}
           onClick={(i, j) => this.handleClick(i, j)}
         />
@@ -198,18 +193,24 @@ class Game extends React.Component {
     );
   }
 
+  /**
+   * Controla las acciones que se deben llevar a cabo luego de realizar un click sobre el componente Mode
+   * @param {*} e Evento provocado por el click
+   */
   handleModeClick(e) {
     const divmode = e.target.parentElement;
     const clickedButton = e.currentTarget;
 
+    //actualiza el modo de pintado
     this.setState({
       mode: e.target.value,
     });
     if (!this.state.win) {
       if (clickedButton.value === "#") {
+        //actualiza los estilos cuando el modo está en "pintar"
         divmode.children[2].style = "border: 2px solid red; background: #020122"
         divmode.children[1].style = "border: null; background: tan"
-      } else {
+      } else { //actualiza los estilos cuando el modo está en "X"
         divmode.children[2].style = "border: null; background: #020122"
         divmode.children[1].style = "border: 2px solid red; background: tan"
       }
