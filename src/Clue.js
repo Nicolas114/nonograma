@@ -6,8 +6,6 @@ import React from "react";
 class Clue extends React.Component {
 
   render() {
-
-
     const painted = this.props.painted; //determina si la pista debe ir pintada o no
     const clue = this.props.clue;
     var styles;
