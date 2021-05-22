@@ -1,5 +1,6 @@
 :- module(init, [ init/3 ]).
 
+%tablero que se encuentra en el enunciado (pez)
 init(
     [[2], [2, 3], [1,2], [2,4], [7], [5,2], [9], [2,5], [2,2], [2]],
 
