@@ -195,3 +195,7 @@ body {
 .square {
   border-radius: 0.2em;
 }
+
+.reveal_solution_button {
+  padding: 2em;
+}

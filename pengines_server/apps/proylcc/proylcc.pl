@@ -307,7 +307,7 @@ Caso recursivo 3: si el primer elemento X que se está leyendo de la lista L NO 
 simplemente se ignora y se procede a seguir recorriendo en la lista L', donde L' es L sin su primer elemento
 */
 transformAux(Count, [X|Xs], Result):- X == "#", CountS is Count + 1, transformAux(CountS, Xs, Result).
-transformAux(Count, [X|Xs], [Count|Result]):- X \== "#", not(Count is 0), transformAux(0, Xs, Result).
+transformAux(Count, [X|Xs], [Count|Result]):- X \== "#", \+(Count is 0), transformAux(0, Xs, Result).
 transformAux(Count, [X|Xs], Result):- X \== "#", Count is 0, transformAux(0, Xs, Result).
 
 /* 
@@ -321,10 +321,222 @@ Caso Base 2: si Lista1 es vacía y Lista2 tiene elementos, entonces no son igual
 Caso Base 3: si Lista1 tiene elementos y Lista2 es vacía, entonces no son iguales
 Caso Base 4: si ambas listas tienen elementos, y sus primeros elementos son diferentes, entonces no son iguales
  */
-comparison([], [], 1).
-comparison([], Ys, 0).
-comparison(Xs, [], 0).
-comparison([X|Xs], [Y|Ys], 0):- dif(X, Y).
+comparison(L, L, 1).
 
-%Caso recursivo: si ambas listas tienen elementos y sus primeros elementos son iguales, entonces se procede a seguir comparando el resto de ambas listas, quitando su primer elemento
-comparison([X|Xs], [Y|Ys], Result):- X == Y, comparison(Xs, Ys, Result).
+comparison(L1, L2, 0):- L1 \= L2.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% PARTE 2 %%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMPORTANTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+	En lo que sigue, en varias oportunidades se va a referir al concepto de "cauta", "jugada cauta", "lista cauta", "fila/columna cauta", entre otros. Algunos sinónimos para este término pueden ser "precavido", "previsor", "discreto", etc. Los mismos fueron elegidos apropiadamente según el contexto de esta aplicación. A lo que se refiere este término en el contexto de esta aplicación es al hecho de que, al momento de resolver un nonograma de forma algorítmica (esto es, automatizada o hecha por la 'inteligencia' de la computadora), existen situaciones en las cuales una cierta fila o columna pueden ser completadas de forma certera, sin ambigüedad, o mejor dicho, sin que exista la posibilidad de considerar que en una celda que se completó con un "#", en realidad deba completarse con un "X" y viceversa. Visto con un ejemplo:
+
+	Supongamos que se tiene una grilla de dimensiones 5x5 como sigue:
+
+	[[_, _, _, _, _], --> fila 0
+	[_, _, _, _, _],  --> fila 1
+	[_, _, _, _, _],  --> fila 2
+	[_, _, _, _, _],  --> fila 3
+	[_, _, _, _, _]]  --> fila 4
+
+	y tomemos, sin pérdida de generalidad, la fila 0.
+	
+	CASO (A): Supongamos que la pista correspondiente a la fila 0 es [5]. Esto indica que debe haber 5 celdas consecutivas pintadas. Luego, toda la fila tomada debe ser pintada, pues es de longitud 5. Luego, resulta en [#, #, #, #, #]. Notemos que **no** existe otra posibilidad para esta fila, puesto que tiene 5 celdas libres, y su pista correspondiente indica que deben pintarse 5 celdas consecutivas.
+	CASO (B): Supongamos que la pista correspondiente a la fila 0 es [1, 1, 1]. Esto indica que debe haber 3 bloques de una celda pintada separadas por uno o más espacios entre ellas. Nótese que la única posibilidad para completar la fila tomada es que resulte en [#, X, #, X, #].
+	CASO (C): Supongamos que la pista correspondiente a la fila 0 es [2, 1]. Esto indica que debe haber 2 bloques de dos y una celdas pintadas separadas por uno o más espacio entre ellas. La rama de posibilidades aumenta de forma que:
+		-Una posibilidad es que resulte en  [#, #, X, #, X]
+		-Otra posibilidad es que resulte en [#, #, X, X, #]
+		-Otra posibilidad es que resulte en [X, #, #, X, #]
+	Luego, para el caso (C), no existe una única posibilidad de completar la fila. Sin embargo, se puede detectar que hay celdas que siempre están pintadas a lo largo de las posibilidades. Si observamos las 3 posibilidades, notamos que el segundo elemento siempre está pintado, con lo cual, en una primera instancia, ese elemento se pintaría.
+
+	A la hora de resolver un nonograma, el algoritmo presentado realizará dos "pasadas" obteniendo diferentes aproximaciones de la solución final. La primera pasada contempla casos como el (A) y el (B), esto es, filas/columnas con una única posibilidad de resolución, mientras que la segunda pasada contempla casos como el (C), esto es, filas/columnas con varias posibilidades de resolución, pero con celdas que sí o sí deben estar pintadas
+
+*/
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+solve(Grilla, PistasFilas, PistasCol, GrillaResuelta):-
+	length(PistasFilas, LongitudFila),
+	length(PistasCol, LongitudColumnas),
+	%se obtiene una primer aproximación de la grilla completando aquellas filas y columnas que tienen una única posibilidad de solución
+	firstApproximation(Grilla, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaListasCautas),
+	%se obtiene una segunda aproximación de la grilla completando aquellas filas y columnas mediante un algoritmo progresivo de completado cauto, esto es, de pintado de celdas seguras.
+	secondApproximation(GrillaListasCautas, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaResuelta),
+	!.
+
+/*
+firstApproximation(+GrillaIn, +PistasFila, +PistasCol, -GrillaPrimerPasada)
+Dada una grilla vacía GrillaIn de iguales dimensiones a la grilla del predicado init/3, las listas de PistasFila y PistasCol correspondientes, guarda en GrillaPrimerPasada el resultado del proceso de completado de filas y columnas que se pueden completar en una sola pasada de la grilla inicial GrillaIn. Ver la aclaración del inicio para más informacion.
+*/
+firstApproximation(GrillaIn, PistasFila, PistasCol, LongitudFila, LongitudColumnas, GrillaPrimerPasada):-
+	%realiza la primer pasada por las filas de la grilla, completando aquellas que son seguras de completar en una sola movida y guardandola en GrillaResultado1
+	firstApproximationAux(GrillaIn, PistasFila, LongitudFila, GrillaResultado1),
+	%transpone la GrillaResultado1 para poder operar facilmente con las columnas
+	transpose(GrillaResultado1, GrillaTranspuesta),
+	%realiza la primer pasada por las columnas de la grilla, completando aquellas que son seguras de completar en una sola movida y guardándola en GrillaResultado2
+	firstApproximationAux(GrillaTranspuesta, PistasCol, LongitudColumnas, GrillaResultado2),
+	%transpone la GrillaResultado2 para obtener la Grilla original con las celdas correspondientes completadas.
+	transpose(GrillaResultado2, GrillaPrimerPasada).
+
+/* 
+secondApproximation(+GrillaListasCautas, +PistasFilas, +PistasCol, -GrillaResuelta)
+Dada una grilla con aquellas filas/columnas con única solucion completadas, y las listas de pistas referidas a las filas y a las columnas, el predicado opera de la siguiente forma:
+	-Corrobora que todas las celdas de la grilla estén pintadas con un "#" o una "X" (es decir, no hay variables)
+	-Si la corroboración fue exitosa entonces el nonograma está resuelto y el predicado está satisfecho (primer predicado).
+	-Si la corroboración falló, es porque hay al menos una variable en el tablero, por lo que el predicado se encarga de obtener una aproximación más refinada del tablero completando la mayor cantidad de celdas que no están pintadas (segundo predicado).
+ */
+
+secondApproximation(Grilla, _PistasFilas, _PistasCol, _LongitudFilas, _LongitudColumnas, Grilla):-
+	forall(
+		member(L, Grilla), (
+			forall(
+					member(X, L),
+					\+(var(X))
+				)
+			)
+	).
+
+secondApproximation(Grilla, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaRes):-
+	resolution(Grilla, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaAux),
+	secondApproximation(GrillaAux, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaRes).
+
+/* 
+resolution(+Grilla, +PistasFilas, +PistasCol, +LongitudFila, +LongitudColumnas, -GrillaResultado)
+Dada la Grilla, las listas de pistas referidas a las filas y a las columnas, y la longitud de ambas listas respectivamente, guarda en GrillaResultado 
+ */
+resolution(Grilla, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaResultado):-
+	generarListasCautas(Grilla, PistasFilas, LongitudFila, GrillaAux),
+	transpose(GrillaAux, GrillaTranspuesta),
+	generarListasCautas(GrillaTranspuesta, PistasCol, LongitudColumnas, GrillaRes),
+	transpose(GrillaRes, GrillaResultado).
+
+generarPistasEnLista([], L):-
+	\+(member("#", L)).
+
+generarPistasEnLista([PrimerPista|PistasRestantes], [PrimerElementoLista|SublistadeGrilla]):-
+	PrimerElementoLista = "#",
+	generarPconsecutivos(PrimerPista, [PrimerElementoLista|SublistadeGrilla], Restante),
+	generarPistasEnLista(PistasRestantes, Restante).
+
+generarPistasEnLista(Pistas, [PrimerElementoLista|SublistadeGrilla]):-
+	PrimerElementoLista = "X",
+	generarPistasEnLista(Pistas, SublistadeGrilla).
+
+
+generarPconsecutivos(0, [], []).
+
+generarPconsecutivos(0, [PrimerElementoLista|ListaResultante], ListaResultante):-
+	PrimerElementoLista = "X".
+
+generarPconsecutivos(Contador, [PrimerElementoLista|ListaResultante], ListaRestante):-
+	PrimerElementoLista = "#",
+	Contador > 0, ContadorAux is Contador - 1,
+	generarPconsecutivos(ContadorAux, ListaResultante, ListaRestante).
+
+generarSolucionesCautas(Actual, Pistas, Longitud, FilaC):-
+	findall(Actual, (length(Actual, Longitud), generarPistasEnLista(Pistas, Actual)), TPosibles),
+	intersect(TPosibles, Longitud, FilaC).
+
+
+intersect(Posibles, Length, Salida):-
+	LengthAux is Length - 1,
+	intersectAux(Posibles, LengthAux, [], Salida).
+
+
+intersectAux(_, -1, Aux, Aux).
+
+intersectAux(Posibles, N, In, Out):-
+	findall(Elem, (member(L, Posibles), nth0(N, L, Elem)), Iesimos),
+	all_atoms("#", Iesimos),
+	append(["#"], In, Aux),
+	NAux is N - 1,
+	intersectAux(Posibles, NAux, Aux, Out).
+
+intersectAux(Posibles, N, In, Out):- 
+	findall(Elem, (member(L, Posibles), nth0(N, L, Elem)), Iesimos),
+	all_atoms("X", Iesimos),
+	append(["X"], In, Aux),
+	NAux is N - 1,
+	intersectAux(Posibles, NAux, Aux, Out).
+
+intersectAux(Posibles, N, In, Out):-
+	append([_], In, Aux),
+	NAux is N - 1,
+	intersectAux(Posibles, NAux, Aux, Out).
+
+/*
+all_atoms(+Elemento, +Lista)
+Dado un Elemento y una Lista, corrobora que todos los elementos de la lista sean iguales al Elemento parametrizado.
+*/
+all_atoms(_Elem, []).
+
+all_atoms(Elem, [X|L]):-
+	X == Elem,
+	all_atoms(Elem, L).
+
+
+sumarPistas([], 0).
+sumarPistas([Elemento|Lista], Suma):-
+	sumarPistas(Lista, Suma_aux),
+	Suma is Suma_aux + Elemento.
+
+
+verificarCondicionListaCauta(Suma_pistas, Longitud_pistas, Longitud_lista):-
+	(Suma_pistas + Longitud_pistas) - 1 =:= Longitud_lista.
+
+
+esListaCauta(Lista_pistas, Lista_grilla):- 
+	sumarPistas(Lista_pistas, Suma_pistas),
+	length(Lista_pistas, Longitud_pistas),
+	length(Lista_grilla, Longitud_lista),
+	verificarCondicionListaCauta(Suma_pistas, Longitud_pistas, Longitud_lista).
+
+/* 
+firstApproximationAux(+GrillaIn, +Pistas, +Longitud, -GrillaResultado),
+Dada una grilla de entrada GrillaIn, la lista de Pistas correspondientes a las pistas de las filas/columnas, y la longitud de las filas/columnas de la grilla Longitud, procesa dicha grilla completando con elementos atómicos ("#" o "X") aquellas filas/columnas que se pueden completar en una movida (ver aclaración del inicio)
+ */
+
+/* 
+Caso base: No hay pistas ni grilla para analizar.
+ */
+firstApproximationAux([], [], _, []).
+
+/* 
+Caso Recursivo 1: Si hay pistas P para analizar, y la grilla G tiene al menos una fila, si ésta es cauta, entonces se procede a generar las soluciones cautas para dicha fila y a seguir analizando la grilla G' y las pistas P', donde G' y P' son la grilla y la lista de pistas sin su primer elemento, respectivamente
+Caso Recursivo 2: Si la grilla G tiene al menos una fila y ésta no es cauta, entonces se ignora y se procede a seguir analizando con el resto de las filas de G.
+ */
+firstApproximationAux([FG|FGs], [P|Ps], Longitud, [FS|FSs]):-
+	esListaCauta(P, FG),
+	generarSolucionesCautas(FG, P, Longitud, FS),
+	firstApproximationAux(FGs, Ps, Longitud, FSs).
+
+firstApproximationAux([_F|FGs], [_P|Ps], Longitud, [_F|FSs]):-
+	firstApproximationAux(FGs, Ps, Longitud, FSs).
+
+/* 
+generar
+ */
+
+generarListasCautas([], [], _, []).
+generarListasCautas([G|Gs], [P|Ps], Longitud, [FC|FCs]):-
+	generarSolucionesCautas(G, P, Longitud, FC),
+	generarListasCautas(Gs, Ps, Longitud, FCs).
+
+%Referencia: https://stackoverflow.com/questions/4280986/how-to-transpose-a-matrix-in-prolog
+
+transpose([], []).
+transpose([F|Fs], Ts):-
+	transpose(F, [F|Fs], Ts).
+
+transpose([], _, []).
+transpose([_|Rs], Ms, [Ts|Tss]):-
+	lists_firsts_rests(Ms, Ts, Ms1),
+	transpose(Rs, Ms1, Tss).
+
+lists_firsts_rests([], [], []).
+lists_firsts_rests([[F|Os]|Rest], [F|Fs], [Os|Oss]):-
+	lists_firsts_rests(Rest, Fs, Oss).
+

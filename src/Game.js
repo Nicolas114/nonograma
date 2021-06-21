@@ -2,6 +2,7 @@ import React from "react";
 import PengineClient from "./PengineClient";
 import Board from "./Board";
 import Mode from "./Mode";
+import ButtonReveal from "./ButtonReveal"
 
 /**
  * Componente Game - componente principal de la aplicación. Se encarga de realizar las consultas al servidor Prolog, de renderizar el nonograma en su conjunto
@@ -13,13 +14,17 @@ class Game extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      grid: null, //la grilla
+      grid: null, //la grilla con la que interactua el jugador
+      solvedGrid: null,
+      showingSolution: false,
+      gridAux: null,
       mode: "#", //el modo de pintado -- "#" significa rellenar, "X" es pintar con una cruz.
       rowClues: null, //estructura de pistas de las filas de la grilla
       satisfiedRowClues: [], //estructura de las pistas de las filas de la grilla que están satisfechas
       colClues: null, //estructura de pistas de las columnas de la grilla
       satisfiedColClues: [], //estructura de las pistas de las columnas de la grilla que están satisfechas
       win: 0, //el estado actual del juego en cuanto a si la partida está finalizada o no
+      suspend: false, //estado actual del juego en cuanto a si la interacción jugador-tablero está habilitada
       waiting: false, //true si se está esperando por una respuesta del servidor, false en caso contrario
     };
     this.handleClick = this.handleClick.bind(this);
@@ -42,8 +47,44 @@ class Game extends React.Component {
           colClues: response["PistasColumnas"],
         });
         this.checkeo_inicial();
+        this.generateEmptyGrid();
       }
     });
+  }
+
+  generateEmptyGrid() {
+
+    var emptyGrid = [];
+    const rowLength = this.state.grid.length;
+    const colLength = this.state.grid[0].length;
+    const rowClues = JSON.stringify(this.state.rowClues);
+    const colClues = JSON.stringify(this.state.colClues);
+
+    emptyGrid = Array(rowLength).fill().map(()=>Array(colLength).fill("_"))
+ 
+    this.setState({
+      emptyGrid: emptyGrid,
+    });
+
+    emptyGrid = JSON.stringify(emptyGrid).replaceAll('"_"', "_");
+    console.log(emptyGrid);
+  
+    const queryS = "solve(" + emptyGrid + ", " + rowClues + ", " + colClues + ", GrillaResuelta)";
+
+    this.setState({
+      waiting: true,
+    })
+    
+    this.pengine.query(queryS, (success, response) => {
+      if (success) {
+        this.setState({
+          solvedGrid: response["GrillaResuelta"],
+          waiting: false,
+        });
+        console.log(this.state.solvedGrid);
+      }
+    });
+
   }
 
   /**
@@ -68,14 +109,40 @@ class Game extends React.Component {
       });
 
       this.pengine.query(queryS, (success, response) => {
-      if (success) {
+        if (success) {
+          this.setState({
+            satisfiedRowClues: response["ResultadosFilas"],
+            satisfiedColClues: response["ResultadosColumnas"],
+            waiting: false,
+          });
+        }
+      });
+  }
+
+  handleRevealingSolution() {
+    const solvedGrid = this.state.solvedGrid;
+    
+    if (!this.state.win){ 
+      if (!this.state.showingSolution) {
+        //mostrar la solucion y DESHABILITAR LA INTERACCION
         this.setState({
-          satisfiedRowClues: response["ResultadosFilas"],
-          satisfiedColClues: response["ResultadosColumnas"],
-          waiting: false,
-        });
+          gridAux: this.state.grid,
+          grid: solvedGrid,
+          showingSolution: true,
+          suspend: true
+        })
       }
-    });
+      else {
+        //HABILITAR LA INTERACCION
+
+        this.setState({
+          grid: this.state.gridAux,
+          showingSolution: false,
+          suspend: false
+        })
+      }
+    }
+
   }
 
   /**
@@ -96,7 +163,8 @@ class Game extends React.Component {
     const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
 
     if (!this.state.win) {
-      const queryS = 'put("' + this.state.mode + '", [' + i + "," + j + "], " + rowClues + ", " + colClues + ", " + squaresS + ", GrillaRes, FilaSat, ColSat)";
+      if (!this.state.suspend) {
+        const queryS = 'put("' + this.state.mode + '", [' + i + "," + j + "], " + rowClues + ", " + colClues + ", " + squaresS + ", GrillaRes, FilaSat, ColSat)";
 
       this.setState({
         waiting: true,
@@ -133,6 +201,8 @@ class Game extends React.Component {
           });
         }
       });
+      }
+      
     }
 
   }
@@ -188,6 +258,7 @@ class Game extends React.Component {
           onClick={(i, j) => this.handleClick(i, j)}
         />
         <Mode onClick={(e) => this.handleModeClick(e)} />
+        <ButtonReveal onClick={(e) => this.handleRevealingSolution(e)} ></ButtonReveal>
         <div className="statusText" id="statusText">Keep playing</div>
       </div>
     );
