@@ -381,23 +381,23 @@ Se asume que la grilla inicial tiene una única solución.
 */
 solve(Grilla, PistasFilas, PistasCol, GrillaResuelta):-
 	%obtiene la longitud de las filas de la grilla
-	length(PistasCol, LongitudFila),
+	length(PistasCol, LongitudFilas),
 	%obtiene la longitud de las columnas de la grilla
 	length(PistasFilas, LongitudColumnas),
 	%se obtiene una primer aproximación de la grilla completando aquellas filas y columnas que tienen una única posibilidad de solución
-	firstApproximation(Grilla, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaListasCautas),
+	firstApproximation(Grilla, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaListasCautas),
 	%se obtiene una segunda aproximación de la grilla completando aquellas filas y columnas mediante un algoritmo progresivo de completado cauto, esto es, de pintado de celdas seguras.
-	secondApproximation(GrillaListasCautas, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaResuelta),
+	secondApproximation(GrillaListasCautas, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaResuelta),
 	%hace un cut para evitar generar más soluciones, ya que la primera solución alcanza (y es la correcta)
 	!.
 
 /*
-firstApproximation(+GrillaIn, +PistasFila, +PistasCol, -GrillaPrimerPasada)
+firstApproximation(+GrillaIn, +PistasFila, +PistasCol, +LongitudFilas, +LongitudColumnas, -GrillaPrimerPasada)
 Dada una grilla vacía GrillaIn, las listas de PistasFila y PistasCol correspondientes, guarda en GrillaPrimerPasada el resultado del proceso de completado de filas y columnas que se pueden completar en una sola pasada de la grilla inicial GrillaIn. Ver la aclaración del inicio para más informacion.
 */
-firstApproximation(GrillaIn, PistasFila, PistasCol, LongitudFila, LongitudColumnas, GrillaPrimerPasada):-
+firstApproximation(GrillaIn, PistasFila, PistasCol, LongitudFilas, LongitudColumnas, GrillaPrimerPasada):-
 	%realiza la primer pasada por las filas de la grilla, completando aquellas que son seguras de completar en una sola movida y guardandola en GrillaResultado1
-	firstApproximationAux(GrillaIn, PistasFila, LongitudFila, GrillaResultado1),
+	firstApproximationAux(GrillaIn, PistasFila, LongitudFilas, GrillaResultado1),
 	%transpone la GrillaResultado1 para poder operar facilmente con las columnas
 	transpose(GrillaResultado1, GrillaTranspuesta),
 	%realiza la primer pasada por las columnas de la grilla, completando aquellas que son seguras de completar en una sola movida y guardándola en GrillaResultado2
@@ -406,7 +406,7 @@ firstApproximation(GrillaIn, PistasFila, PistasCol, LongitudFila, LongitudColumn
 	transpose(GrillaResultado2, GrillaPrimerPasada).
 
 /* 
-secondApproximation(+GrillaListasCautas, +PistasFilas, +PistasCol, -GrillaResuelta)
+secondApproximation(+GrillaListasCautas, +PistasFilas, +PistasCol, +LongitudFilas, +LongitudColumnas, -GrillaResuelta)
 Dada una grilla con aquellas filas/columnas con única solucion completadas, y las listas de pistas referidas a las filas y a las columnas, el predicado opera de la siguiente forma:
 	-Corrobora que todas las celdas de la grilla estén pintadas con un "#" o una "X" (es decir, no hay variables)
 	-Si la corroboración fue exitosa entonces el nonograma está resuelto y el predicado está satisfecho (primer predicado).
@@ -414,6 +414,7 @@ Dada una grilla con aquellas filas/columnas con única solucion completadas, y l
  */
 
 secondApproximation(Grilla, _PistasFilas, _PistasCol, _LongitudFilas, _LongitudColumnas, Grilla):-
+	%corrobora que no haya variables en la grilla
 	forall(
 		member(L, Grilla), (
 			forall(
@@ -424,22 +425,15 @@ secondApproximation(Grilla, _PistasFilas, _PistasCol, _LongitudFilas, _LongitudC
 	).
 
 secondApproximation(Grilla, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaRes):-
-	resolution(Grilla, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaAux),
-	secondApproximation(GrillaAux, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaRes).
-
-/* 
-resolution(+Grilla, +PistasFilas, +PistasCol, +LongitudFila, +LongitudColumnas, -GrillaResultado)
-Dada la Grilla, las listas de pistas referidas a las filas y a las columnas, y la longitud de ambas listas respectivamente, guarda en GrillaResultado la grilla parametrizada luego del proceso de completado de filas y columnas cautas
- */
-resolution(Grilla, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaResultado):-
 	%completa las filas que son cautas
-	generarListasCautas(Grilla, PistasFilas, LongitudFila, GrillaAux),
+	completarListasCautas(Grilla, PistasFilas, LongitudFilas, GrillaAux1),
 	%transpone la grilla para poder trabajar fácilmente con las columnas y poder utilizar el mismo predicado
-	transpose(GrillaAux, GrillaTranspuesta),
+	transpose(GrillaAux1, GrillaTranspuesta1),
 	%completa las columnas que son cautas
-	generarListasCautas(GrillaTranspuesta, PistasCol, LongitudColumnas, GrillaRes),
+	completarListasCautas(GrillaTranspuesta1, PistasCol, LongitudColumnas, GrillaAux2),
 	%transpone la grilla recibida para volver a su estado normal
-	transpose(GrillaRes, GrillaResultado).
+	transpose(GrillaAux2, GrillaTranspuesta2),
+	secondApproximation(GrillaTranspuesta2, PistasFilas, PistasCol, LongitudFilas, LongitudColumnas, GrillaRes).
 
 /* 
 esListaCauta(+ListaDePistas, +ListaGrilla)
@@ -556,21 +550,21 @@ firstApproximationAux([_F|FGs], [_P|Ps], Longitud, [_F|FSs]):-
 	firstApproximationAux(FGs, Ps, Longitud, FSs).
 
 /* 
-generarListasCautas(+Grilla, +Pistas, +Longitud, -GrillaResultado)
+completarListasCautas(+Grilla, +Pistas, +Longitud, -GrillaResultado)
 Se encarga de procesar la Grilla dada en base a las Pistas y a la Longitud dadas, rellenando aquellas celdas de las filas/columnas que sí o sí deben ir pintadas, gracias a la resolución lógica vía intersección de posibles soluciones para una lista (ver el predicado generarSolucionesCautas y aclaración del inicio)
  */
 
 /* 
 Caso base: No hay Grilla ni Pistas para analizar
  */
-generarListasCautas([], [], _, []).
+completarListasCautas([], [], _, []).
 
 /* 
 Caso recursivo: dada una grilla Grilla, una lista de pistas Pistas (puede ser la referida a las filas o a las columnas), la longitud de dicha lista Longitud, toma el primer elemento de Grilla y Pistas (la lista de la grilla que se está leyendo y la pista referida a esa lista, respectivamente), y la completa mediante la lógica de resolución por interseccion de posibles soluciones. Luego repite el proceso en Grilla' y Pistas', donde Grilla' y Pistas' son Grilla y Pistas sin su primer elemento.
  */
-generarListasCautas([G|Gs], [P|Ps], Longitud, [FC|FCs]):-
+completarListasCautas([G|Gs], [P|Ps], Longitud, [FC|FCs]):-
 	generarSolucionesCautas(G, P, Longitud, FC),
-	generarListasCautas(Gs, Ps, Longitud, FCs).
+	completarListasCautas(Gs, Ps, Longitud, FCs).
 
 /* 
 generarSolucionesCautas(+Lista, +Pista, +Longitud, -Result)
