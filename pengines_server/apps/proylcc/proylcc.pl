@@ -373,11 +373,17 @@ comparison(L1, L2, 0):- L1 \= L2.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREDICADOS PRINCIPALES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+/*
+solve(+Grilla, +PistasFilas, +PistasCol, -GrillaResuelta)
+Dada una grilla VACÍA, y las listas de pistas de las filas y columnas, procesa y guarda en GrillaResuelta la grilla parametrizada con todas sus celdas completadas correctamente.
+Se asume que la grilla inicial tiene una única solución.
+*/
 solve(Grilla, PistasFilas, PistasCol, GrillaResuelta):-
-	%obtiene la cantidad de filas de la grilla
-	length(PistasFilas, LongitudFila),
-	%obtiene la cantidad de columnas de la grilla
-	length(PistasCol, LongitudColumnas),
+	%obtiene la longitud de las filas de la grilla
+	length(PistasCol, LongitudFila),
+	%obtiene la longitud de las columnas de la grilla
+	length(PistasFilas, LongitudColumnas),
 	%se obtiene una primer aproximación de la grilla completando aquellas filas y columnas que tienen una única posibilidad de solución
 	firstApproximation(Grilla, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaListasCautas),
 	%se obtiene una segunda aproximación de la grilla completando aquellas filas y columnas mediante un algoritmo progresivo de completado cauto, esto es, de pintado de celdas seguras.
@@ -387,7 +393,7 @@ solve(Grilla, PistasFilas, PistasCol, GrillaResuelta):-
 
 /*
 firstApproximation(+GrillaIn, +PistasFila, +PistasCol, -GrillaPrimerPasada)
-Dada una grilla vacía GrillaIn de iguales dimensiones a la grilla del predicado init/3, las listas de PistasFila y PistasCol correspondientes, guarda en GrillaPrimerPasada el resultado del proceso de completado de filas y columnas que se pueden completar en una sola pasada de la grilla inicial GrillaIn. Ver la aclaración del inicio para más informacion.
+Dada una grilla vacía GrillaIn, las listas de PistasFila y PistasCol correspondientes, guarda en GrillaPrimerPasada el resultado del proceso de completado de filas y columnas que se pueden completar en una sola pasada de la grilla inicial GrillaIn. Ver la aclaración del inicio para más informacion.
 */
 firstApproximation(GrillaIn, PistasFila, PistasCol, LongitudFila, LongitudColumnas, GrillaPrimerPasada):-
 	%realiza la primer pasada por las filas de la grilla, completando aquellas que son seguras de completar en una sola movida y guardandola en GrillaResultado1
@@ -426,9 +432,13 @@ resolution(+Grilla, +PistasFilas, +PistasCol, +LongitudFila, +LongitudColumnas, 
 Dada la Grilla, las listas de pistas referidas a las filas y a las columnas, y la longitud de ambas listas respectivamente, guarda en GrillaResultado la grilla parametrizada luego del proceso de completado de filas y columnas cautas
  */
 resolution(Grilla, PistasFilas, PistasCol, LongitudFila, LongitudColumnas, GrillaResultado):-
+	%completa las filas que son cautas
 	generarListasCautas(Grilla, PistasFilas, LongitudFila, GrillaAux),
+	%transpone la grilla para poder trabajar fácilmente con las columnas y poder utilizar el mismo predicado
 	transpose(GrillaAux, GrillaTranspuesta),
+	%completa las columnas que son cautas
 	generarListasCautas(GrillaTranspuesta, PistasCol, LongitudColumnas, GrillaRes),
+	%transpone la grilla recibida para volver a su estado normal
 	transpose(GrillaRes, GrillaResultado).
 
 /* 
@@ -450,34 +460,25 @@ intersect(ListaConListas, Longitud, Interseccion):-
 	intersectAux(ListaConListas, Nth, [], Interseccion).
 
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREDICADOS AUXILIARES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 
 /* 
 armarListaSegunPista(+Pista, -Lista)
-Dada una Pista parametrizada, arma y guarda en Lista la mínima lista que respete las pistas indicadas. Por ejemplo, si Pista = [1,2], la mínima lista que respeta esta pista es L = [#, X, #, #]
+Dada una Pista parametrizada, arma y guarda en Lista la mínima lista que respete las pistas indicadas. Por ejemplo, si Pista = [1,2], la mínima lista que respeta esta pista es L = [#, X, #, #] 
  */
-armarListaSegunPista([], L):-
-	\+(member("#", L)).
+armarListaSegunPista([],[]).
 
 armarListaSegunPista([P|Ps], ["#"|Ls]):-
-	generarElementos(P, ["#"|Ls], Rest),
+	generarNElementos(P, ["#"|Ls], Rest),
 	armarListaSegunPista(Ps, Rest).
 
-armarListaSegunPista(P, ["X"|Ls]):-
-	armarListaSegunPista(P, Ls).
+armarListaSegunPista(Ps, ["X"|Ls]):-
+	armarListaSegunPista(Ps, Ls).
 
-/* 
-generarElementos(+Count, -ListaResultante, -Rest)
-Genera Count elementos consecutivos y los guarda en ListaResultante
- */
-generarElementos(0, [], []).
-
-generarElementos(0, ["X"|ListaResultante], ListaResultante).
-
-generarElementos(Count, ["#"|ListaResultante], Rest):-
-	Count > 0,
-	CountS is Count - 1,
-	generarElementos(CountS, ListaResultante, Rest).
 
 /*
 all_atoms(+Elemento, +Lista)
@@ -517,6 +518,20 @@ transpose([_|Rs], Ms, [Ts|Tss]):-
 lists_firsts_rests([], [], []).
 lists_firsts_rests([[F|Os]|Rest], [F|Fs], [Os|Oss]):-
 	lists_firsts_rests(Rest, Fs, Oss).
+
+/* 
+generarNElementos(+N, -ListaResultante, -Rest)
+Genera N elementos consecutivos y los guarda en ListaResultante
+ */
+generarNElementos(0, [], []).
+
+generarNElementos(0, ["X"|ListaResultante], ListaResultante).
+
+generarNElementos(N, ["#"|ListaResultante], Rest):-
+	N > 0,
+	NS is N - 1,
+	generarNElementos(NS, ListaResultante, Rest).
+
 
 /* 
 firstApproximationAux(+GrillaIn, +Pistas, +Longitud, -GrillaResultado),
