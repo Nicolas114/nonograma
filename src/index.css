@@ -196,6 +196,10 @@ body {
   border-radius: 0.2em;
 }
 
-.reveal_solution_button {
+.revealing_buttons {
+  display: flex;
+}
+
+.reveal_solution_button, .reveal_cell_button {
   padding: 2em;
 }

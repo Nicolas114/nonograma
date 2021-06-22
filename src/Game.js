@@ -2,7 +2,8 @@ import React from "react";
 import PengineClient from "./PengineClient";
 import Board from "./Board";
 import Mode from "./Mode";
-import ButtonReveal from "./ButtonReveal"
+import RevealSolution from "./RevealSolution"
+import RevealCell from "./RevealCell";
 
 /**
  * Componente Game - componente principal de la aplicación. Se encarga de realizar las consultas al servidor Prolog, de renderizar el nonograma en su conjunto
@@ -16,7 +17,8 @@ class Game extends React.Component {
     this.state = {
       grid: null, //la grilla con la que interactua el jugador
       solvedGrid: null,
-      showingSolution: false,
+      showingGridSolution: false,
+      showingCellSolution: false,
       gridAux: null,
       mode: "#", //el modo de pintado -- "#" significa rellenar, "X" es pintar con una cruz.
       rowClues: null, //estructura de pistas de las filas de la grilla
@@ -24,7 +26,6 @@ class Game extends React.Component {
       colClues: null, //estructura de pistas de las columnas de la grilla
       satisfiedColClues: [], //estructura de las pistas de las columnas de la grilla que están satisfechas
       win: 0, //el estado actual del juego en cuanto a si la partida está finalizada o no
-      suspend: false, //estado actual del juego en cuanto a si la interacción jugador-tablero está habilitada
       waiting: false, //true si se está esperando por una respuesta del servidor, false en caso contrario
     };
     this.handleClick = this.handleClick.bind(this);
@@ -52,6 +53,9 @@ class Game extends React.Component {
     });
   }
 
+  /**
+   * Genera una grilla vacía de iguales dimensiones a la grilla con la que interactúa el usuario, a fin de poder enviársela a Prolog mediante la consulta "solve/4" y obtener la solución a dicha grilla.
+   */
   generateEmptyGrid() {
 
     var emptyGrid = [];
@@ -60,20 +64,25 @@ class Game extends React.Component {
     const rowClues = JSON.stringify(this.state.rowClues);
     const colClues = JSON.stringify(this.state.colClues);
 
-    emptyGrid = Array(rowLength).fill().map(()=>Array(colLength).fill("_"))
+    //llena con "_" todos los elementos de la matriz/grilla
+    emptyGrid = Array(rowLength).fill().map(()=>Array(colLength).fill("_"));
  
     this.setState({
       emptyGrid: emptyGrid,
     });
 
     emptyGrid = JSON.stringify(emptyGrid).replaceAll('"_"', "_");
-    console.log(emptyGrid);
   
     const queryS = "solve(" + emptyGrid + ", " + rowClues + ", " + colClues + ", GrillaResuelta)";
+    const statusText = document.getElementById("statusText");
+    var auxContent = statusText.textContent;
 
     this.setState({
       waiting: true,
-    })
+    });
+
+    statusText.textContent = "Generating Solution..."
+    console.log(statusText.textContent);
     
     this.pengine.query(queryS, (success, response) => {
       if (success) {
@@ -81,7 +90,9 @@ class Game extends React.Component {
           solvedGrid: response["GrillaResuelta"],
           waiting: false,
         });
-        console.log(this.state.solvedGrid);
+        
+        statusText.textContent = auxContent;
+        console.log("Solution Generated");
       }
     });
 
@@ -119,26 +130,24 @@ class Game extends React.Component {
       });
   }
 
+  /**
+   * Controla las acciones que se deben llevar a cabo cuando se hace click en el botón "Reveal Solution"
+   */
   handleRevealingSolution() {
     const solvedGrid = this.state.solvedGrid;
     
     if (!this.state.win){ 
-      if (!this.state.showingSolution) {
-        //mostrar la solucion y DESHABILITAR LA INTERACCION
+      if (!this.state.showingGridSolution) {
         this.setState({
           gridAux: this.state.grid,
           grid: solvedGrid,
-          showingSolution: true,
-          suspend: true
-        })
+          showingGridSolution: true,
+        });
       }
       else {
-        //HABILITAR LA INTERACCION
-
         this.setState({
           grid: this.state.gridAux,
-          showingSolution: false,
-          suspend: false
+          showingGridSolution: false,
         })
       }
     }
@@ -160,47 +169,74 @@ class Game extends React.Component {
     // put("#",[0,1],[], [],[["X",_,_,_,_],["X",_,"X",_,_],["X",_,_,_,_],["#","#","#",_,_],[_,_,"#","#","#"]], GrillaRes, FilaSat, ColSat)
     const rowClues = JSON.stringify(this.state.rowClues);
     const colClues = JSON.stringify(this.state.colClues);
-    const squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
+    var squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_"); // Remove quotes for variables.
 
     if (!this.state.win) {
-      if (!this.state.suspend) {
-        const queryS = 'put("' + this.state.mode + '", [' + i + "," + j + "], " + rowClues + ", " + colClues + ", " + squaresS + ", GrillaRes, FilaSat, ColSat)";
+      if (!this.state.showingGridSolution) {
+        if (!this.state.showingCellSolution) {
+          const queryS = 'put("' + this.state.mode + '", [' + i + "," + j + "], " + rowClues + ", " + colClues + ", " + squaresS + ", GrillaRes, FilaSat, ColSat)";
 
-      this.setState({
-        waiting: true,
-      });
-
-      //realiza la consulta de put/7 al servidor Prolog 
-      this.pengine.query(queryS, (success, response) => {
-        if (success) {
           this.setState({
-            grid: response["GrillaRes"],
-            waiting: false,
+            waiting: true,
           });
 
-          
-          const rowSatisfied = response["FilaSat"]; //almacena el valor de verdad referente a si la fila donde se hizo click satisface su correspondiente pista
-          const colSatisfied = response["ColSat"]; //almacena el valor de verdad referente a si la columna donde se hizo click satisface su correspondiente pista
+          //realiza la consulta de put/7 al servidor Prolog 
+          this.pengine.query(queryS, (success, response) => {
+            if (success) {
+              this.setState({
+                grid: response["GrillaRes"],
+                waiting: false,
+              });
 
-          //copia ambos arreglos para poder realizar el cambio en el state sin mutarlo
-          let currentRowChanges = this.state.satisfiedRowClues.slice();
-          currentRowChanges[i] = rowSatisfied;
-          let currentColChanges = this.state.satisfiedColClues.slice();
-          currentColChanges[j] = colSatisfied;
+              
+              const rowSatisfied = response["FilaSat"]; //almacena el valor de verdad referente a si la fila donde se hizo click satisface su correspondiente pista
+              const colSatisfied = response["ColSat"]; //almacena el valor de verdad referente a si la columna donde se hizo click satisface su correspondiente pista
 
-          this.setState({
-            satisfiedRowClues: currentRowChanges,
-            satisfiedColClues: currentColChanges,
-          });
+              //copia ambos arreglos para poder realizar el cambio en el state sin mutarlo
+              let currentRowChanges = this.state.satisfiedRowClues.slice();
+              currentRowChanges[i] = rowSatisfied;
+              let currentColChanges = this.state.satisfiedColClues.slice();
+              currentColChanges[j] = colSatisfied;
 
-          //finalmente verifica si todas las pistas del juego fueron satisfechas después del click
-          this.checkWin();
-        } else {
-          this.setState({
-            waiting: false,
+              this.setState({
+                satisfiedRowClues: currentRowChanges,
+                satisfiedColClues: currentColChanges,
+              });
+
+              //finalmente verifica si todas las pistas del juego fueron satisfechas después del click
+              this.checkWin();
+            } else {
+              this.setState({
+                waiting: false,
+              });
+            }
           });
         }
-      });
+        else {
+          const solvedGrid = this.state.solvedGrid;
+          const originalGridUpdated = this.state.grid.slice();
+
+          originalGridUpdated[i][j] = solvedGrid[i][j];
+
+          this.setState({
+            grid: originalGridUpdated,
+          });
+
+          squaresS = JSON.stringify(this.state.grid).replaceAll('"_"', "_");
+
+          const queryS = "checkeo_inicial(" + rowClues + ", " + colClues + ", " + squaresS + ", ResultadosFilas, ResultadosColumnas)";
+
+          this.pengine.query(queryS, (success, response) => {
+            if (success){
+              this.setState({
+                satisfiedRowClues: response["ResultadosFilas"],
+                satisfiedColClues: response["ResultadosColumnas"]
+              })
+              this.checkWin();
+            }
+          });
+
+        }
       }
       
     }
@@ -236,12 +272,45 @@ class Game extends React.Component {
   }
 
   /**
+   * Controla las acciones que se deben llevar a cabo luego de realizar un click sobre el botón "Reveal Cell"
+   * @param {*} e Evento provocado por el click
+   */
+  handleRevealingCell(e){
+    const clickedButton = e.currentTarget;
+
+    if (!this.state.win){
+      if (!this.state.showingCellSolution){
+        this.setState({
+          showingCellSolution: true
+        });
+
+        clickedButton.style = "background: blue"
+      }
+      else {
+        this.setState({
+          showingCellSolution: false
+        });
+
+        clickedButton.style = "background: null"
+      }
+    }
+  }
+
+  /**
    * Renderiza los componentes de la aplicación para que el usuario pueda interactuar con ella
    * @returns el bloque de elementos HTML que conforman la aplicacion
    */
   render() {
     if (this.state.win) {
       const statusText = document.getElementById("statusText");
+      const showCellButton = document.getElementById("reveal_cell_button");
+      const showGridSolutionButton = document.getElementById("reveal_solution_button");
+      const modeButton = document.getElementById("mode__button");
+
+      showCellButton.style = "background: null"
+      showCellButton.disabled = true;
+      showGridSolutionButton.disabled = true;
+      modeButton.disabled = true;
       statusText.textContent = "The game is finished"
     }
     if (this.state.grid === null) {
@@ -258,7 +327,10 @@ class Game extends React.Component {
           onClick={(i, j) => this.handleClick(i, j)}
         />
         <Mode onClick={(e) => this.handleModeClick(e)} />
-        <ButtonReveal onClick={(e) => this.handleRevealingSolution(e)} ></ButtonReveal>
+        <div className="revealing_buttons">
+          <RevealSolution onClick={() => this.handleRevealingSolution()} ></RevealSolution>
+          <RevealCell onClick={(e) => this.handleRevealingCell(e)}></RevealCell>
+        </div>
         <div className="statusText" id="statusText">Keep playing</div>
       </div>
     );
