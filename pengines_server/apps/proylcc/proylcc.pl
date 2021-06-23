@@ -445,24 +445,14 @@ esListaCauta(ListaDePistas, ListaGrilla):-
 	length(ListaGrilla, LongitudLista),
 	(SumaValoresPistas + LongitudPistas) - 1 =:= LongitudLista.
 
-/* 
-intersect(+ListaConListas, +Longitud, -Interseccion)
-Dada una lista cuyos elementos son listas, guarda en Interseccion el resultado de intersectar entre sí todas las listas elemento de la ListaConListas parametrizada.
- */
-intersect(ListaConListas, Longitud, Interseccion):-
-	Nth is Longitud - 1,
-	intersectAux(ListaConListas, Nth, [], Interseccion).
-
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREDICADOS AUXILIARES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
 /* 
 armarListaSegunPista(+Pista, -Lista)
-Dada una Pista parametrizada, arma y guarda en Lista la mínima lista que respete las pistas indicadas. Por ejemplo, si Pista = [1,2], la mínima lista que respeta esta pista es L = [#, X, #, #] 
+Dada una Pista parametrizada, arma y guarda en Lista la lista que respete las pistas indicadas. Por ejemplo, si Pista = [1,2], una de las listas que respeta esta pista es L = [#, X, #, #] 
  */
 armarListaSegunPista([],[]).
 
@@ -475,21 +465,21 @@ armarListaSegunPista(Ps, ["X"|Ls]):-
 
 
 /*
-all_atoms(+Elemento, +Lista)
+allAtoms(+Elemento, +Lista)
 Dado un Elemento y una Lista, corrobora que todos los elementos de la lista sean iguales al Elemento parametrizado.
 */
 
 /* 
 Caso base: La lista está vacía, no hay nada que recorrer
  */
-all_atoms(_Elem, []).
+allAtoms(_Elem, []).
 
 /* 
-Caso recursivo: la lista L iene al menos un elemento, con lo que se corrobora si es igual al Elem parametrizado, para luego repetir el proceso con L', donde L' es L sin su primer elemento.
+Caso recursivo: la lista L tiene al menos un elemento, con lo que se corrobora si es igual al Elem parametrizado, para luego repetir el proceso con L', donde L' es L sin su primer elemento.
  */
-all_atoms(Elem, [X|L]):-
+allAtoms(Elem, [X|L]):-
 	X == Elem,
-	all_atoms(Elem, L).
+	allAtoms(Elem, L).
 
 /* 
 sumarPistas(+ListaDePistas, -Suma)
@@ -512,10 +502,11 @@ transpose([_|Rs], Ms, [Ts|Tss]):-
 lists_firsts_rests([], [], []).
 lists_firsts_rests([[F|Os]|Rest], [F|Fs], [Os|Oss]):-
 	lists_firsts_rests(Rest, Fs, Oss).
+%Fin referencia
 
 /* 
 generarNElementos(+N, -ListaResultante, -Rest)
-Genera N elementos consecutivos y los guarda en ListaResultante
+Genera N elementos consecutivos y los guarda en ListaResultante, separados por un "X" de Rest. Ejemplo: la consulta generarNElementos(2, L, ["X", "X", "#", "X", "#"]). devuelve L = ["#", "#", "X", "X", "X", "#", "X", "#"], donde los dos primeros elementos son los generados. 
  */
 generarNElementos(0, [], []).
 
@@ -551,7 +542,7 @@ firstApproximationAux([_F|FGs], [_P|Ps], Longitud, [_F|FSs]):-
 
 /* 
 completarListasCautas(+Grilla, +Pistas, +Longitud, -GrillaResultado)
-Se encarga de procesar la Grilla dada en base a las Pistas y a la Longitud dadas, rellenando aquellas celdas de las filas/columnas que sí o sí deben ir pintadas, gracias a la resolución lógica vía intersección de posibles soluciones para una lista (ver el predicado generarSolucionesCautas y aclaración del inicio)
+Se encarga de procesar la Grilla dada en base a las Pistas y a la Longitud dadas, rellenando aquellas celdas de las filas/columnas (funciona igual para ambas) que sí o sí deben ir pintadas, gracias a la resolución lógica vía intersección de posibles soluciones para una lista (ver el predicado generarSolucionesCautas y aclaración del inicio)
  */
 
 /* 
@@ -576,31 +567,40 @@ generarSolucionesCautas(L, P, Longitud, Result):-
 	findall(L, (length(L, Longitud), armarListaSegunPista(P, L)), PosiblesSoluciones),
 	intersect(PosiblesSoluciones, Longitud, Result).
 
+/* 
+intersect(+ListaConListas, +Longitud, -Interseccion)
+Dada una lista cuyos elementos son listas, guarda en Interseccion el resultado de intersectar entre sí todas las listas elemento de la ListaConListas parametrizada.
+ */
+intersect(ListaConListas, Longitud, Interseccion):-
+	Nth is Longitud - 1,
+	intersectAux(ListaConListas, Nth, [], Interseccion).
+
+
 /*
  intersectAux(+ListaConListas, +Nth, +InterseccionInicial, -InterseccionFinal)
  Guarda en InterseccionFinal el resultado del proceso de reunir los Nth-ésimos elementos de la ListaConListas en una nueva lista y evaluar si son todos atómicos (y entonces habría un elemento en común, sea "X" o "#") o no, con el fin de armar la lista de intersección.
  */
 
 /* 
-Caso base: no hay más posiciones Nth para recorrer (la última posición válida fue 0).
+Caso base: no hay más posiciones Nth para recorrer (la última posición válida fue 0 y por la resta terminó con valor '-1').
  */
 intersectAux(_, -1, Interseccion, Interseccion).
 
 /* 
 Caso recursivo 1: si la lista formada por las posiciones Nth de las listas de la ListaConPistas está compuesta por "#", entonces se agrega el elemento "#" a la intersección en la posición Nth pues esto significa que en dicha posición hay un elemento común "#" para todas las listas.
-Caso recursivo 2: ídem que en CR1, pero con el elemento "X"
+Caso recursivo 2: ídem que en CR1 con el elemento "X".
 Caso recursivo 3: en caso contrario, se agrega un elemento "_" en la posición Nth de la lista IntersecciónFinal.
  */
 intersectAux(ListaConListas, Nth, InterseccionInicial, InterseccionFinal):-
 	findall(E, (member(L, ListaConListas), nth0(Nth, L, E)), Nths),
-	all_atoms("#", Nths),
+	allAtoms("#", Nths),
 	append(["#"], InterseccionInicial, Aux),
 	NthS is Nth - 1,
 	intersectAux(ListaConListas, NthS, Aux, InterseccionFinal).
 
 intersectAux(ListaConListas, Nth, InterseccionInicial, InterseccionFinal):- 
 	findall(E, (member(L, ListaConListas), nth0(Nth, L, E)), Nths),
-	all_atoms("X", Nths),
+	allAtoms("X", Nths),
 	append(["X"], InterseccionInicial, Aux),
 	NthS is Nth - 1,
 	intersectAux(ListaConListas, NthS, Aux, InterseccionFinal).

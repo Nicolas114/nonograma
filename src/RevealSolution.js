@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * Componente Mode - se encarga de renderizar la parte de los modos de pintado de la aplicación.
+ * Componente RevealSolution - se encarga de renderizar la parte del botón de revelar el tablero solucionado por completo.
  */
 class RevealSolution extends React.Component {
 

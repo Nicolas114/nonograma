@@ -16,10 +16,10 @@ class Game extends React.Component {
     super(props);
     this.state = {
       grid: null, //la grilla con la que interactua el jugador
-      solvedGrid: null,
-      showingGridSolution: false,
-      showingCellSolution: false,
-      gridAux: null,
+      solvedGrid: null, //la grilla resuelta
+      showingGridSolution: false, //estado en el cual se indica si se está mostrando la solucion del tablero o no
+      showingCellSolution: false, //estado en el cual se indica si se busca revelar la solucion de una celda cada vez que se presiona en ella.
+      gridAux: null, //grilla auxiliar para facilitar el cambio entre la grilla resuelta y la grilla con la que el jugador está interactuando
       mode: "#", //el modo de pintado -- "#" significa rellenar, "X" es pintar con una cruz.
       rowClues: null, //estructura de pistas de las filas de la grilla
       satisfiedRowClues: [], //estructura de las pistas de las filas de la grilla que están satisfechas
@@ -135,6 +135,8 @@ class Game extends React.Component {
    */
   handleRevealingSolution() {
     const solvedGrid = this.state.solvedGrid;
+    const revealCellButton = document.getElementById("reveal_cell_button");
+    const modeButtons = document.getElementById("mode__button");
     
     if (!this.state.win){ 
       if (!this.state.showingGridSolution) {
@@ -143,12 +145,18 @@ class Game extends React.Component {
           grid: solvedGrid,
           showingGridSolution: true,
         });
+        revealCellButton.disabled = true;
+        modeButtons.disabled = true;
       }
       else {
         this.setState({
           grid: this.state.gridAux,
           showingGridSolution: false,
-        })
+        });
+
+        revealCellButton.disabled = false;
+        modeButtons.disabled = false;
+
       }
     }
 

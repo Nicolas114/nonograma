@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * Componente Mode - se encarga de renderizar la parte de los modos de pintado de la aplicación.
+ * Componente RevealCell - se encarga de renderizar la parte del botón que 'togglea' cuándo revelar la solución correcta a una celda
  */
 class RevealCell extends React.Component {
 
